@@ -11,7 +11,7 @@ async function onLogout() {
     try {
         await logout(router);
     } catch (e) {
-        router.replace('/login');
+        router.replace('/');
     }
 }
 </script>
