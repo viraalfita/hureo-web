@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'https://hureo-service-production.up.railway.app/api';
+const API_URL = 'https://hureo-service.up.railway.app/api';
 
 export const api = axios.create({ baseURL: API_URL });
 
