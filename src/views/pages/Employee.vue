@@ -1,5 +1,5 @@
 <script setup>
-import { createEmployee, deleteEmployee, listEmployees, updateEmployee } from '@/api/api';
+import { createEmployee, deleteEmployee, getUsersByCompany, listEmployees, updateEmployee } from '@/api/api';
 import { FilterMatchMode } from '@primevue/core/api';
 import { useToast } from 'primevue/usetoast';
 import { computed, onMounted, ref, watch } from 'vue';
@@ -21,6 +21,7 @@ const dt = ref(null);
 // ======= state =======
 const loading = ref(false);
 const rows = ref([]);
+const users = ref([]);
 
 // filter/search
 const filters = ref({
@@ -47,6 +48,7 @@ const showForm = ref(false);
 const isEdit = ref(false);
 const form = ref({
     _id: null,
+    userId: '',
     fullName: '',
     email: '',
     phone: '',
@@ -76,6 +78,13 @@ const departmentsDynamic = computed(() => {
     const set = new Set((rows.value || []).map((r) => r.department).filter(Boolean));
     return Array.from(set).map((d) => ({ label: d, value: d }));
 });
+
+const userOptions = computed(() =>
+    (users.value || []).map((u) => ({
+        label: u.username || u.name || u.email || '(tanpa nama)',
+        value: String(u._id || u.id || u.userId || '')
+    }))
+);
 
 // FE filter ringan (server juga mendukung query)
 const visibleRows = computed(() => {
@@ -118,7 +127,25 @@ async function fetchEmployees() {
         loading.value = false;
     }
 }
-onMounted(fetchEmployees);
+onMounted(() => {
+    fetchEmployees();
+    fetchUsers();
+});
+
+async function fetchUsers() {
+    if (!companyId) return;
+    try {
+        const res = await getUsersByCompany(companyId);
+        users.value = Array.isArray(res?.data) ? res.data : [];
+    } catch (err) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Tidak bisa memuat user',
+            detail: err?.response?.data?.error || 'Gagal memuat user',
+            life: 2500
+        });
+    }
+}
 
 async function exportExcel() {
     try {
@@ -180,6 +207,7 @@ function openCreate() {
     isEdit.value = false;
     form.value = {
         _id: null,
+        userId: '',
         fullName: '',
         email: '',
         phone: '',
@@ -199,8 +227,10 @@ function openCreate() {
 
 function openEdit(row) {
     isEdit.value = true;
+    const userIdFromRow = row.userId || row.user?._id || row.user?.id || '';
     form.value = {
         _id: row._id,
+        userId: userIdFromRow ? String(userIdFromRow) : '',
         fullName: row.fullName || '',
         email: row.email || '',
         phone: row.phone || '',
@@ -227,6 +257,7 @@ async function submitForm() {
         const payload = {
             companyId,
             ...form.value,
+            userId: form.value.userId || null,
             dateOfBirth: form.value.dateOfBirth || null,
             hireDate: form.value.hireDate || null
         };
@@ -360,6 +391,22 @@ function severityByStatus(s) {
         <!-- Dialog Form (Create/Edit) -->
         <Dialog v-model:visible="showForm" :style="{ width: '720px' }" :header="isEdit ? 'Ubah Karyawan' : 'Tambah Karyawan'" :modal="true">
             <div class="grid">
+                <div class="col-12">
+                    <div class="flex flex-col gap-2">
+                        <label class="font-medium">User (opsional)</label>
+                        <Dropdown
+                            v-model="form.userId"
+                            :options="userOptions"
+                            optionLabel="label"
+                            optionValue="value"
+                            placeholder="Pilih user terdaftar"
+                            showClear
+                            filter
+                            fluid
+                        />
+                    </div>
+                </div>
+
                 <div class="col-12 md:col-6">
                     <div class="flex flex-col gap-2">
                         <label class="font-medium">Nama</label>
