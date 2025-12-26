@@ -11,18 +11,21 @@ const loading = ref(true);
 onMounted(async () => {
     try {
         const [tAtt, leaves, users] = await Promise.all([fetchTodayAttendanceByCompany(companyId, 'Asia/Jakarta'), fetchAllLeaves(), fetchUsersByCompany(companyId)]);
-        const uMap = new Map((users ?? []).map((u) => [u._id || u.id, u]));
+        const uMap = new Map((users ?? []).map((u) => [String(u._id || u.id || u.userId || ''), u]));
 
         const catatan = [];
 
         // Absensi hari ini
         for (const a of tAtt ?? []) {
-            const u = uMap.get(a.userId);
+            const uid = String(typeof a.userId === 'object' ? a.userId?._id || a.userId?.id || a.userId?.userId : a.userId || '');
+            const u = uMap.get(uid);
             catatan.push({
                 tipe: a.isLate ? 'late' : (a.status ?? '').toLowerCase(),
-                teks: `${u?.fullName ?? 'Tidak diketahui'} ${a.isLate ? 'melakukan check-in terlambat' : 'melakukan check-in'}`,
+                teks: `${
+                    a.employee?.fullName || u?.fullName || u?.username || u?.name || u?.email || 'Tidak diketahui'
+                } ${a.isLate ? 'melakukan check-in terlambat' : 'melakukan check-in'}`,
                 extra: a.isLate ? 'Mohon ditinjau.' : '',
-                waktu: a.checkInTime || a.date || new Date().toISOString()
+                waktu: a.checkInTime || a.time || a.date || new Date().toISOString()
             });
         }
 

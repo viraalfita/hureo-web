@@ -37,7 +37,15 @@ const userOptions = computed(() =>
 );
 
 // ===== helpers =====
-const getUsername = (r) => r?.user?.username || r?.userId?.username || r?.username || '(tanpa nama)';
+const getUsername = (r) =>
+    r?.employee?.fullName ||
+    r?.user?.fullName ||
+    r?.userId?.fullName ||
+    r?.user?.username ||
+    r?.userId?.username ||
+    r?.username ||
+    r?.employee?.email ||
+    '(tanpa nama)';
 const getUserId = (r) => String(r?.userId?._id || r?.user?._id || r?.userId || r?.user || '');
 const getTimestamp = (r) => r?.timestamp || r?.time || r?.createdAt || r?.updatedAt || null;
 
@@ -268,11 +276,11 @@ onMounted(fetchAll);
             dataKey="_id"
             :loading="loading"
             :paginator="true"
-            :visibleRows="10"
+            :rows="10"
             :filters="filters"
             :globalFilterFields="['__search']"
-            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport visibleRowsPerPageDropdown"
-            :visibleRowsPerPageOptions="[10, 20, 50]"
+            paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
+            :rowsPerPageOptions="[10, 20, 50]"
             currentPageReportTemplate="Menampilkan {first} sampai {last} dari {totalRecords} data"
         >
             <template #header>

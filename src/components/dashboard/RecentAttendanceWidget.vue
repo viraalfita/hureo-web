@@ -9,7 +9,7 @@ const loading = ref(true);
 
 const userMap = computed(() => {
     const m = new Map();
-    for (const u of users.value) m.set(u._id || u.id, u);
+    for (const u of users.value) m.set(String(u._id || u.id || u.userId || ''), u);
     return m;
 });
 
@@ -29,18 +29,22 @@ onMounted(async () => {
         users.value = u ?? [];
 
         // urutkan terbaru
-        const sorted = [...(atts ?? [])].sort((a, b) => new Date(b.checkInTime || b.date) - new Date(a.checkInTime || a.date));
+        const sorted = [...(atts ?? [])].sort((a, b) => new Date(b.checkInTime || b.time || b.date) - new Date(a.checkInTime || a.time || a.date));
 
         // ambil 5
         baris.value = sorted.slice(0, 5).map((it) => {
-            const u = userMap.value.get(it.userId);
+            const uid = String(typeof it.userId === 'object' ? it.userId?._id || it.userId?.id || it.userId?.userId : it.userId || '');
+            const u = userMap.value.get(uid);
+            const statusRaw = it.status || ((it.isLate ?? it.late) ? 'late' : it.type) || '-';
+            const nama = it.employee?.fullName || u?.fullName || u?.username || u?.name || u?.email || 'Tidak diketahui';
+            const dept = it.employee?.department || u?.department || '-';
             return {
-                nama: u?.fullName ?? 'Tidak diketahui',
+                nama,
                 avatar: u?.avatarUrl,
-                departemen: u?.department ?? '-',
-                status: (it.status ?? '').toUpperCase(),
-                terlambat: !!it.isLate,
-                jamMasuk: it.checkInTime || it.date
+                departemen: dept,
+                status: String(statusRaw || '-').toUpperCase(),
+                terlambat: !!(it.isLate ?? it.late),
+                jamMasuk: it.checkInTime || it.time || it.date
             };
         });
     } finally {

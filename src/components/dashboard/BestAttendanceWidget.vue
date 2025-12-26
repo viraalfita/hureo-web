@@ -17,27 +17,35 @@ onMounted(async () => {
     try {
         const [atts, users] = await Promise.all([fetchAttendanceByCompany(companyId), fetchUsersByCompany(companyId)]);
         const sejak = awalNharilalu(7);
+        const userMap = new Map((users ?? []).map((u) => [String(u._id || u.id || u.userId || ''), u]));
         const byUser = new Map();
 
         for (const a of atts ?? []) {
-            const t = new Date(a.date || a.checkInTime || Date.now());
+            const t = new Date(a.date || a.checkInTime || a.time || Date.now());
             if (t < sejak) continue;
-            const key = a.userId;
+            const key = String(typeof a.userId === 'object' ? a.userId?._id || a.userId?.id || a.userId?.userId : a.userId || '');
+            if (!key) continue;
+            const status = (a.status ?? '').toLowerCase();
+            const type = (a.type ?? '').toLowerCase();
+            const late = a.isLate === true || a.late === true;
+            const counted = status === 'present' || status === 'late' || status === 'on-time' || type === 'checkin' || type === 'checkout';
+            if (!counted) continue;
             if (!byUser.has(key)) byUser.set(key, { total: 0, ontime: 0 });
             const rec = byUser.get(key);
+            if (!rec.sample) rec.sample = a;
             rec.total++;
-            const status = (a.status ?? '').toLowerCase();
-            const ontime = status === 'present' && (a.isLate === false || status === 'on-time');
+            const ontime = !late;
             if (ontime) rec.ontime++;
         }
 
         const list = [];
         for (const [uid, stat] of byUser) {
-            const u = (users ?? []).find((x) => (x._id || x.id) === uid);
+            const u = userMap.get(uid);
+            const sampel = stat.sample || {};
             const rate = stat.total ? Math.round((stat.ontime / stat.total) * 100) : 0;
             list.push({
-                nama: u?.fullName ?? 'Tidak diketahui',
-                dept: u?.department ?? '-',
+                nama: sampel.employee?.fullName || u?.fullName || u?.username || u?.name || u?.email || 'Tidak diketahui',
+                dept: sampel.employee?.department ?? u?.department ?? '-',
                 rate,
                 barClass: rate >= 80 ? 'bg-green-500' : rate >= 60 ? 'bg-cyan-500' : rate >= 40 ? 'bg-orange-500' : 'bg-pink-500',
                 textClass: rate >= 80 ? 'text-green-500' : rate >= 60 ? 'text-cyan-500' : rate >= 40 ? 'text-orange-500' : 'text-pink-500'
